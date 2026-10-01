@@ -151,8 +151,15 @@ details.key p{margin:6px 0 0}
 .also button:hover{background:var(--raise)}
 .built{border:1px solid var(--line);border-radius:10px;padding:12px;line-height:1.9;font-size:13.5px;color:var(--dim)}
 .bit{border-radius:4px;padding:1px 2px}
-.bit.k{color:var(--text);cursor:pointer;text-decoration:underline;text-decoration-color:var(--parts);text-underline-offset:3px;text-decoration-thickness:1.5px}
-.bit.k:hover,.bit.k.cur{background:rgba(143,178,214,.16)}
+.bit.k{color:var(--text);cursor:pointer;background:color-mix(in srgb,var(--c) 14%,transparent);box-shadow:inset 0 -2px 0 var(--c);border-radius:3px;padding:1px 0}
+.bit.k .bit.k{background:color-mix(in srgb,var(--c) 22%,transparent)}
+.bit.k.hl{background:color-mix(in srgb,var(--c) 32%,transparent)}
+.card[data-c]{border-left:3px solid var(--c)}
+.card.hl{border-color:var(--c);box-shadow:0 0 0 1px var(--c)}
+.cdot{display:inline-flex;align-items:center;gap:7px}
+.cdot::before{content:"";width:8px;height:8px;border-radius:50%;background:var(--c);flex:none}
+.keep code[data-c]{box-shadow:inset 0 -2px 0 var(--c);color:var(--text);cursor:pointer}
+.bit.k:hover{filter:brightness(1.15)}
 .bit.d{color:var(--dim);font-style:italic}
 .label{font-size:12px;color:var(--dim);margin-bottom:-6px}
 
@@ -811,13 +818,16 @@ const ICON_COPY='<svg width="14" height="14" viewBox="0 0 14 14" fill="none" str
 const WHERE='Online Store › Themes › ⋯ › <b>Edit default theme content</b>';
 function searchText(k){ const v=KEYS[k]; const p=v.split(/%\{\w+\}/).map(s=>s.trim()).filter(Boolean).sort((a,b)=>b.length-a.length); return p[0]||v; }
 
+const PAL=["#8fb2d6","#d8c27a","#9cc59a","#d29ab3","#b3a1e0","#d9a07a","#7fc4c0"];
+function colorOf(f,k){ const i=keysOf(f).indexOf(k); return i>0 ? PAL[(i-1)%PAL.length] : null; }
 function card(k,o={}){
   const v=val(k), def=KEYS[k], need=phs(def), missing=need.filter(p=>!v.includes("%{"+p+"}")), same=SAME[k]||[];
   const input = def.length>44 ? `<textarea class="input" id="in-${esc(k)}" rows="3" aria-label="Text">${esc(v)}</textarea>` : `<input class="input" id="in-${esc(k)}" value="${esc(v)}" aria-label="Text">`;
-  return `<div class="card ${o.cur?"cur":""} ${o.alt?"alt":""}">
-    <div class="chead"><span>${esc(o.head||"Text")}</span>${k in vals?'<span class="edited">Edited</span>':""}</div>
+  const c=o.c, f=o.f, vs=f?varsFor(f,k):{};
+  return `<div class="card ${o.cur?"cur":""} ${o.alt?"alt":""}" data-k="${esc(k)}" ${c?`data-c style="--c:${c}"`:""}>
+    <div class="chead"><span class="${c?"cdot":""}">${esc(o.head||"Text")}</span>${k in vals?'<span class="edited">Edited</span>':""}</div>
     ${input}
-    ${need.length?`<div class="keep">Keep ${need.map(p=>`<code>%{${esc(p)}}</code>`).join("")}</div>`:""}
+    ${need.length?`<div class="keep">Keep ${need.map(p=>{ const pk=vs[p]&&vs[p].k, pc=pk&&colorOf(f,pk); return `<code ${pc?`data-c data-focus="${esc(pk)}" style="--c:${pc}"`:""}>%{${esc(p)}}</code>`; }).join("")}</div>`:""}
     ${missing.length?`<div class="bad">Put back ${missing.map(p=>"%{"+esc(p)+"}").join(" ")}</div>`:""}
     <div class="row">
       <button class="btn go" data-copy="${esc(searchText(k))}">${ICON_COPY}Copy to search</button>
@@ -843,26 +853,27 @@ function renderInspector(){
     <div class="pills"><span class="pill ${kind}">${KIND[kind]}</span>${f.unsure?'<span class="pill guess">Best guess</span>':""}</div>`;
   if(kind==="fixed"){ pbody.innerHTML=h+`<div class="where"><span>Change it in</span>${esc(f.fixed)}</div>`; return; }
   if(kind==="parts"){
-    const raw=val(f.key); let s="", last=0;
-    for(const m of raw.matchAll(/%\{(\w+)\}/g)){
-      s+=esc(raw.slice(last,m.index)); last=m.index+m[0].length;
-      const v=(f.vars||{})[m[1]];
-      if(!v) s+=`<span class="bit d">${esc(m[0])}</span>`;
-      else if(v.d) s+=`<span class="bit d" title="Filled in automatically">${esc(v.d)}</span>`;
-      else s+=`<span class="bit k ${focusKey===v.k?"cur":""}" data-focus="${esc(v.k)}">${esc(expand(f,v.k,false))}</span>`;
-    }
-    s+=esc(raw.slice(last));
-    h+=`<div class="label">Blue = its own field · dashed = automatic</div><div class="built">${s}</div>`;
+    const bits=key=>{ const raw=val(key), vs=varsFor(f,key); let s="", last=0;
+      for(const m of raw.matchAll(/%\{(\w+)\}/g)){
+        s+=esc(raw.slice(last,m.index)); last=m.index+m[0].length;
+        const v=vs[m[1]];
+        if(!v) s+=`<span class="bit d">${esc(m[0])}</span>`;
+        else if(v.d) s+=`<span class="bit d" title="Filled in automatically">${esc(v.d)}</span>`;
+        else s+=`<span class="bit k" data-focus="${esc(v.k)}" style="--c:${colorOf(f,v.k)}">${bits(v.k)}</span>`;
+      }
+      return s+esc(raw.slice(last)); };
+    window.__bits=bits;
+    h+=`<div class="label">Each colour is its own field · grey italic is automatic</div><div class="built">${bits(f.key)}</div>`;
   }
   if(kind==="shared"){
     const others=usersOf(f.key).filter(id=>id!==f.id);
     h+=`<div class="label">Also changes</div><div class="also">${others.map(id=>`<button data-go="${id}">${esc(byId[id].label)}</button>`).join("")}</div>`;
   }
   if(f.note) h+=`<p class="tip">${esc(f.note)}</p>`;
-  h+=card(f.key,{cur:!focusKey||focusKey===f.key});
+  h+=card(f.key,{f, cur:!focusKey||focusKey===f.key, head: kind==="parts"?"Whole sentence":"Text"});
   keysOf(f).slice(1).forEach(k=>{
     const o=usersOf(k).filter(id=>id!==f.id);
-    h+=card(k,{cur:focusKey===k, head: o.length?`Piece · also in ${o.map(id=>byId[id].label).join(", ")}`:"Piece"});
+    h+=card(k,{f, c:colorOf(f,k), cur:focusKey===k, head: o.length?`Also in ${o.map(id=>byId[id].label).join(", ")}`:`“${searchText(k).slice(0,28)}${searchText(k).length>28?"…":""}”`});
   });
   (f.alt||[]).forEach(a=>h+=card(a.key,{alt:true, head:`Used instead: ${a.when}`}));
   pbody.innerHTML=h;
@@ -940,10 +951,10 @@ pbody.addEventListener("input",e=>{
   let w=c.querySelector(".bad");
   if(missing.length){ if(!w){ c.querySelector(".keep").insertAdjacentHTML("afterend",'<div class="bad"></div>'); w=c.querySelector(".bad"); } w.textContent="Put back "+missing.map(p=>"%{"+p+"}").join(" "); }
   else if(w) w.remove();
-  document.querySelectorAll(`.bit[data-focus="${CSS.escape(k)}"]`).forEach(b=>b.textContent=expand(byId[selected],k,false));
+  const bl=pbody.querySelector(".built"); if(bl && window.__bits) bl.innerHTML=window.__bits(byId[selected].key);
 });
 pbody.addEventListener("click",e=>{
-  const b=e.target.closest("button, .bit.k"); if(!b) return;
+  const b=e.target.closest("button, .bit.k, code[data-focus]"); if(!b) return;
   if(b.dataset.focus){ focusKey=b.dataset.focus; renderInspector(); return; }
   if(b.dataset.go){ select(b.dataset.go); return; }
   if(b.dataset.reset){ delete vals[b.dataset.reset]; paint(); renderPanel(); return; }
@@ -967,6 +978,10 @@ function dockValues(){
   ["layout","cart","page"].forEach(k=>document.getElementById("dkv-"+k).textContent=pick(k));
   document.getElementById("dkv-view").textContent = document.getElementById("showmap").checked ? "Colours on" : "Colours off";
 }
+/* hover a coloured piece ↔ its input card */
+function linkHL(k,on){ if(!k) return; pbody.querySelectorAll(`[data-focus="${CSS.escape(k)}"]`).forEach(e=>e.classList.toggle("hl",on)); const c=pbody.querySelector(`.card[data-k="${CSS.escape(k)}"]`); c&&c.classList.toggle("hl",on); }
+pbody.addEventListener("mouseover",e=>{ const t=e.target.closest("[data-focus],.card[data-c]"); if(!t) return; const k=t.dataset.focus||t.dataset.k; const r=e.relatedTarget; if(r&&t.contains(r)) return; linkHL(k,true); });
+pbody.addEventListener("mouseout",e=>{ const t=e.target.closest("[data-focus],.card[data-c]"); if(!t) return; const r=e.relatedTarget; if(r&&t.contains(r)) return; linkHL(t.dataset.focus||t.dataset.k,false); });
 paint(); renderPanel();
 </script>
 </body>
