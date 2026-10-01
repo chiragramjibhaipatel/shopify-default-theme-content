@@ -1,8 +1,8 @@
-# Checkout Content Map
+# Shopify Default Theme Content
 
 Shopify's **Edit default theme content** screen lists hundreds of checkout texts with no picture of where each one appears. This page shows a real-looking Shopify checkout instead: tap any text and see the exact field behind it, what it says now, and what to search for in the language editor.
 
-**Live:** https://checkout-content-map.netlify.app
+**Live:** https://shopify-default-theme-content.com/
 
 ## What it covers
 
