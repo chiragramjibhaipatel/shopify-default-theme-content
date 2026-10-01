@@ -25,4 +25,8 @@ You can type your own wording in the panel to preview it on the checkout first. 
 - Fields are matched to the checkout by their text. Where several fields share the same text, the field key panel says so, and a few uncertain matches are marked **Best guess**.
 - Single static page, no build step: open `index.html` in a browser.
 
-Not affiliated with or endorsed by Shopify.
+## License
+
+[MIT](LICENSE) © 2026 Chirag R Patel
+
+The default checkout texts shown on the page are Shopify's own wording, included only to show where each field appears. Shopify is a trademark of Shopify Inc. This project is not affiliated with or endorsed by Shopify.
