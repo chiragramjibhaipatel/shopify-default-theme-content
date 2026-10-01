@@ -14,10 +14,10 @@ Shopify's **Edit default theme content** screen lists hundreds of checkout texts
 ## How to use
 
 1. Tap any text on the checkout.
-2. Type your version and press **Copy to search**.
-3. In Shopify admin, open **Online Store › Themes › ⋯ › Edit default theme content** and paste it into the search box.
+2. Press **Copy key** (for example `shopify.checkout.order_summary.discount_placeholder`).
+3. In Shopify admin, open **Online Store › Themes › ⋯ › Edit default theme content** and paste the key into the search box. It jumps straight to that one field.
 
-The **Edits** tab collects every change as a checklist.
+You can type your own wording in the panel to preview it on the checkout first. The **Edits** tab collects every change, with its key, as a checklist.
 
 ## Notes
 

@@ -187,6 +187,7 @@ details.key p{margin:6px 0 0}
 .keep code[data-c]{box-shadow:inset 0 -2px 0 var(--c);color:var(--text);cursor:pointer}
 .bit.k:hover{filter:brightness(1.15)}
 .bit.d{color:var(--dim);font-style:italic}
+.kname{font-family:var(--f-mono);font-size:11px;color:var(--dim);word-break:break-all;line-height:1.5}
 .label{font-size:12px;color:var(--dim);margin-bottom:-6px}
 
 .search{width:100%;border:1px solid var(--line);background:var(--ink);border-radius:8px;padding:8px 11px}
@@ -482,7 +483,7 @@ details.key p{margin:6px 0 0}
       <div class="pbody" id="pbody"></div>
       <section class="pbody about" id="about" hidden aria-labelledby="about-h">
         <h1 id="about-h">Shopify Default Theme Content, mapped</h1>
-        <p>Shopify's <b>Edit default theme content</b> lists hundreds of checkout texts with no picture of where they appear. This page shows a real-looking checkout instead. Tap any text to find the exact field behind it.</p>
+        <p>Shopify's <b>Edit default theme content</b> lists hundreds of checkout texts with no picture of where they appear. This page shows a real-looking checkout instead. Tap any text to get its field key, then paste the key into the editor's search to jump straight to it.</p>
         <ul>
           <li>One-page and 3-page checkout</li>
           <li>Regular and subscription carts</li>
@@ -870,11 +871,11 @@ function card(k,o={}){
     ${input}
     ${need.length?`<div class="keep">Keep ${need.map(p=>{ const pk=vs[p]&&vs[p].k, pc=pk&&colorOf(f,pk); return `<code ${pc?`data-c data-focus="${esc(pk)}" style="--c:${pc}"`:""}>%{${esc(p)}}</code>`; }).join("")}</div>`:""}
     ${missing.length?`<div class="bad">Put back ${missing.map(p=>"%{"+esc(p)+"}").join(" ")}</div>`:""}
+    <code class="kname" title="Paste this in the editor's search to jump straight to this field">${esc(P+k)}</code>
     <div class="row">
-      <button class="btn go" data-copy="${esc(searchText(k))}">${ICON_COPY}Copy to search</button>
+      <button class="btn go" data-copy="${esc(P+k)}">${ICON_COPY}Copy key</button>
       ${k in vals?`<button class="btn" data-reset="${esc(k)}">Undo</button>`:""}
     </div>
-    <details class="key"><summary>Field key</summary><code>${esc(P+k)}</code>${same.length?`<p>Same text also in ${same.length} other field${same.length>1?"s":""}.</p>`:""}</details>
   </div>`;
 }
 
@@ -884,8 +885,8 @@ function renderInspector(){
       <h2>Tap any text on the checkout</h2>
       <ol class="howto">
         <li><span class="num">1</span><span>Tap text</span></li>
-        <li><span class="num">2</span><span>Type your version, then <b>Copy to search</b></span></li>
-        <li><span class="num">3</span><span class="path">Paste it in ${WHERE}</span></li>
+        <li><span class="num">2</span><span><b>Copy key</b></span></li>
+        <li><span class="num">3</span><span class="path">Paste it in the search of ${WHERE}</span></li>
       </ol>
     </div>`; return;
   }
@@ -942,7 +943,7 @@ function renderChanges(){
   let h=`<div class="path">Make these in ${WHERE}</div>`;
   ks.forEach(k=>{ const u=usersOf(k).concat(F.filter(f=>(f.alt||[]).some(a=>a.key===k)).map(f=>f.id));
     h+=`<div class="chg"><s>${esc(KEYS[k])}</s><span class="new">${esc(vals[k])}</span>
-      <div class="row">${u[0]?`<button class="btn" data-go="${u[0]}">Show</button>`:""}<button class="btn" data-copy="${esc(searchText(k))}">${ICON_COPY}Copy old</button><button class="btn" data-reset="${esc(k)}">Undo</button></div></div>`; });
+      <div class="row">${u[0]?`<button class="btn" data-go="${u[0]}">Show</button>`:""}<button class="btn" data-copy="${esc(P+k)}">${ICON_COPY}Copy key</button><button class="btn" data-reset="${esc(k)}">Undo</button></div></div>`; });
   h+=`<div class="row"><button class="btn go" id="copy-all">${ICON_COPY}Copy list</button><button class="btn" id="reset-all">Undo all</button></div>`;
   pbody.innerHTML=h;
 }
@@ -1002,7 +1003,7 @@ pbody.addEventListener("click",e=>{
   if(b.dataset.go){ select(b.dataset.go); return; }
   if(b.dataset.reset){ delete vals[b.dataset.reset]; paint(); renderPanel(); return; }
   if(b.dataset.copy){ copy(b.dataset.copy,b); return; }
-  if(b.id==="copy-all"){ copy(Object.keys(vals).map(k=>`"${KEYS[k]}" → "${vals[k]}"`).join("\n"),b); return; }
+  if(b.id==="copy-all"){ copy(Object.keys(vals).map(k=>`${P+k}\n  "${KEYS[k]}" → "${vals[k]}"`).join("\n\n"),b); return; }
   if(b.id==="reset-all"){ for(const k in vals) delete vals[k]; paint(); renderPanel(); }
 });
 
