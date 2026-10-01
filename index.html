@@ -1,0 +1,990 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Checkout Content Map</title>
+<meta name="description" content="Tap any text on a Shopify checkout to find the theme-content field that controls it.">
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect x='3' y='18' width='22' height='8' rx='2' fill='%23ffe14d'/%3E%3Crect x='12' y='5' width='16' height='9' rx='2.5' fill='%2314121c' transform='rotate(-38 20 10)'/%3E%3C/svg%3E">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,500;12..96,700;12..96,800&family=Instrument+Sans:wght@400;500;600&family=JetBrains+Mono:wght@400&display=swap">
+<style>
+html,body{margin:0}
+img{max-width:100%}
+[hidden]{display:none!important}
+</style>
+<style>
+/* Layout: a dark "marker board" — dotted canvas holds the real checkout; a side drawer shows what the highlighted text is.
+   One committed dark look: the white checkout sits on it like a printout under a highlighter. */
+:root{
+  color-scheme:dark;
+  --ink:#14121c;      /* board */
+  --panel:#1d1a28;    /* drawer */
+  --raise:#272336;    /* cards */
+  --line:#363049;
+  --text:#f4f1fb;
+  --dim:#a8a2bd;
+  --mark:#ffe14d;     /* highlighter: the one bold colour */
+  --mark-ink:#1a1600;
+  --pink:#ff86bf;     /* edits several spots */
+  --sky:#7cc8ff;      /* made of pieces */
+  --slate:#8e899e;    /* not editable here */
+  --bad:#ff8a7a;
+  --f-display:"Bricolage Grotesque","Avenir Next",system-ui,sans-serif;
+  --f-ui:"Instrument Sans",system-ui,-apple-system,"Segoe UI",sans-serif;
+  --f-mono:"JetBrains Mono",ui-monospace,Menlo,monospace;
+}
+[hidden]{display:none!important}
+html,body{height:100%}
+body{background:var(--ink);color:var(--text);font-family:var(--f-ui);font-size:14px;line-height:1.45}
+*{box-sizing:border-box}
+button,input,textarea{font:inherit;color:inherit}
+:focus-visible{outline:2px solid var(--mark);outline-offset:2px}
+@media (prefers-reduced-motion:reduce){*{transition:none!important;animation:none!important}}
+
+.app{display:flex;flex-direction:column;min-height:100%}
+
+/* ---------- top bar ---------- */
+.dock{position:fixed;z-index:30;left:calc((100vw - 400px) / 2);bottom:calc(18px + env(safe-area-inset-bottom,0px));transform:translateX(-50%);
+  display:flex;flex-wrap:nowrap;gap:4px;align-items:center;padding:6px;border-radius:24px;
+  background:rgba(29,26,40,.82);backdrop-filter:blur(14px);-webkit-backdrop-filter:blur(14px);
+  border:1px solid var(--line);box-shadow:0 14px 40px rgba(0,0,0,.55);max-width:calc(100vw - 32px)}
+.dk{position:relative}
+.pop-view{min-width:220px;white-space:nowrap;display:flex;flex-direction:column;gap:4px}
+.pop-view .tgl{padding:8px 10px;border-radius:10px;color:var(--text);gap:10px}
+.pop-view .tgl:hover{background:var(--raise)}
+.key{display:flex;flex-direction:column;gap:7px;border-top:1px solid var(--line);margin-top:4px;padding:10px 10px 4px;font-size:12.5px;color:var(--dim)}
+.dk:last-child .pop{left:auto;right:-6px;transform:none}
+.dk:last-child .pop::after{left:auto;right:42px;transform:rotate(45deg)}
+.dk-btn{width:96px;height:62px;border:0;border-radius:18px;background:none;color:var(--text);cursor:pointer;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:2px;padding:0 6px}
+.dk-btn:hover,.dk-btn[aria-expanded="true"]{background:var(--raise)}
+.dk-btn svg{flex:none;color:var(--mark)}
+.dk-l{font-size:10.5px;letter-spacing:.08em;text-transform:uppercase;color:var(--dim);font-weight:600;line-height:1.1}
+.dk-v{font-size:12.5px;font-weight:600;max-width:100%;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;line-height:1.2}
+.pop{position:absolute;bottom:calc(100% + 12px);left:50%;transform:translateX(-50%);background:var(--panel);border:1px solid var(--line);border-radius:16px;padding:8px;box-shadow:0 18px 40px rgba(0,0,0,.55);min-width:180px;z-index:2}
+.pop::after{content:"";position:absolute;left:50%;bottom:-7px;width:12px;height:12px;background:var(--panel);border-right:1px solid var(--line);border-bottom:1px solid var(--line);transform:translateX(-50%) rotate(45deg)}
+.pop-h{font-size:11px;letter-spacing:.08em;text-transform:uppercase;color:var(--dim);font-weight:600;padding:4px 10px 6px}
+.seg.vert{flex-direction:column;flex-wrap:nowrap;background:none;border:0;padding:0;border-radius:0}
+.seg.vert button{width:100%;justify-content:flex-start;border-radius:10px;padding:9px 10px;color:var(--text)}
+.seg.vert button:hover{background:var(--raise)}
+.seg.vert button[aria-pressed="true"]{background:var(--mark);color:var(--mark-ink)}
+.seg.vert button[aria-pressed="true"]::after{content:"✓";margin-left:auto;font-weight:700}
+.seg{display:flex;background:var(--panel);border:1px solid var(--line);border-radius:999px;padding:3px;gap:2px;flex-wrap:wrap}
+.seg button{border:0;background:none;color:var(--dim);padding:6px 12px;border-radius:999px;cursor:pointer;font-weight:500;display:inline-flex;align-items:center;gap:6px;white-space:nowrap}
+.seg button:hover{color:var(--text)}
+.seg button[aria-pressed="true"]{background:var(--text);color:var(--ink)}
+.seg button svg{flex:none}
+
+/* ---------- board ---------- */
+.main{flex:1;display:grid;grid-template-columns:minmax(0,1fr) 400px;min-height:0}
+.canvas{padding-block:16px 110px;padding-inline:16px;min-width:0;
+  background-color:var(--ink);
+  background-image:radial-gradient(var(--line) 1px,transparent 1.2px);background-size:18px 18px}
+.lg{display:inline-flex;align-items:center;gap:6px}
+.sw{width:18px;height:10px;border-radius:3px}
+.sw.single{background:var(--mark)} .sw.shared{background:var(--pink)} .sw.parts{background:var(--sky)} .sw.fixed{background:var(--slate)}
+.tgl{display:inline-flex;align-items:center;gap:7px;cursor:pointer;color:var(--dim);user-select:none}
+.tgl input{appearance:none;width:30px;height:18px;border-radius:999px;background:var(--line);position:relative;cursor:pointer;margin:0;flex:none}
+.tgl input::after{content:"";position:absolute;top:3px;left:3px;width:12px;height:12px;border-radius:50%;background:var(--dim);transition:transform .15s}
+.tgl input:checked{background:var(--mark)}
+.tgl input:checked::after{transform:translateX(12px);background:var(--mark-ink)}
+
+/* checkout sits like a printout */
+.co{box-shadow:0 18px 50px rgba(0,0,0,.45);border:0!important}
+
+/* ---------- highlighter on the checkout ---------- */
+[data-f]{cursor:pointer;border-radius:3px;transition:background-color .12s,box-shadow .12s}
+.co [data-f]:hover{background-color:rgba(255,225,77,.35)}
+.co [data-f].k-shared:hover{background-color:rgba(255,134,191,.35)}
+.co [data-f].k-parts:hover{background-color:rgba(124,200,255,.38)}
+.co [data-f].k-fixed:hover{background-color:rgba(142,137,158,.25)}
+.show-map [data-f].k-single{background-color:rgba(255,225,77,.28)}
+.show-map [data-f].k-shared{background-color:rgba(255,134,191,.28)}
+.show-map [data-f].k-parts{background-color:rgba(124,200,255,.30)}
+.show-map [data-f].k-fixed{background-color:rgba(142,137,158,.18)}
+[data-f].is-sel{background-color:rgba(255,225,77,.75)!important;box-shadow:0 0 0 3px rgba(255,225,77,.75)!important}
+[data-f].is-rel{outline:2px dashed var(--pink);outline-offset:3px}
+[data-f].is-edited{text-decoration:underline wavy #e0a800;text-underline-offset:3px}
+.pbtn[data-f].is-sel,.apply[data-f].is-sel{box-shadow:0 0 0 4px var(--mark)!important;background-color:var(--link)!important;color:#fff}
+
+/* ---------- drawer ---------- */
+.panel{background:var(--panel);border-left:1px solid var(--line);display:flex;flex-direction:column;min-height:0;min-width:0;position:sticky;top:0;height:100vh}
+.tabs{display:flex;gap:4px;padding:10px 12px 0}
+.tabs button{flex:1;background:none;border:0;border-radius:10px 10px 0 0;padding:9px 6px;cursor:pointer;color:var(--dim);font-weight:600;display:inline-flex;justify-content:center;align-items:center;gap:6px}
+.tabs button[aria-selected="true"]{background:var(--raise);color:var(--text)}
+.tabs .n{font-family:var(--f-mono);font-size:11px;background:var(--mark);color:var(--mark-ink);border-radius:999px;padding:0 6px;min-width:18px;text-align:center}
+.tabs .n[data-zero]{background:var(--line);color:var(--dim)}
+.pbody{flex:1;overflow:auto;padding:16px;display:flex;flex-direction:column;gap:14px;min-height:0;background:var(--raise);margin:0 12px 12px;border-radius:0 0 14px 14px}
+.foot{font-size:11.5px;color:var(--dim);padding:0 16px 12px;display:flex;gap:6px;align-items:center}
+.foot i{width:6px;height:6px;border-radius:50%;background:var(--mark);flex:none}
+
+/* empty state */
+.hello{display:flex;flex-direction:column;align-items:flex-start;gap:14px;padding:6px 2px}
+.hello h2{font-family:var(--f-display);font-weight:800;font-size:28px;line-height:1.05;letter-spacing:-.02em;margin:0;text-wrap:balance}
+.hello h2 em{font-style:normal;background:linear-gradient(transparent 66%,var(--mark) 66% 100%);color:var(--text)}
+.howto{list-style:none;margin:0;padding:0;display:flex;flex-direction:column;gap:10px;width:100%}
+.howto li{display:flex;gap:12px;align-items:center;background:var(--panel);border-radius:12px;padding:10px 12px}
+.howto .num{font-family:var(--f-display);font-weight:800;font-size:18px;width:28px;height:28px;border-radius:50%;background:var(--mark);color:var(--mark-ink);display:flex;align-items:center;justify-content:center;flex:none}
+.path{font-size:12.5px;color:var(--dim)}
+.path b{color:var(--text);font-weight:600}
+
+/* selected */
+.sec{font-size:11.5px;letter-spacing:.08em;text-transform:uppercase;color:var(--dim);font-weight:600}
+.ttl{font-family:var(--f-display);font-weight:700;font-size:24px;line-height:1.1;letter-spacing:-.015em;margin:2px 0 0;text-wrap:balance}
+.pill{align-self:flex-start;display:inline-flex;align-items:center;gap:6px;font-weight:600;font-size:12.5px;padding:4px 10px 4px 8px;border-radius:999px;color:var(--mark-ink)}
+.pill.single{background:var(--mark)} .pill.shared{background:var(--pink)} .pill.parts{background:var(--sky)} .pill.fixed{background:var(--slate);color:var(--ink)}
+.pill.guess{background:none;border:1px dashed var(--mark);color:var(--mark)}
+.pills{display:flex;flex-wrap:wrap;gap:6px}
+.tip{font-size:13px;color:var(--dim);margin:0}
+.where{background:var(--panel);border-radius:12px;padding:12px;display:flex;flex-direction:column;gap:4px}
+.where span{color:var(--dim);font-size:12px}
+.card{background:var(--panel);border:1px solid var(--line);border-radius:14px;padding:12px;display:flex;flex-direction:column;gap:10px}
+.card.cur{border-color:var(--mark)}
+.card.alt{background:transparent;border-style:dashed}
+.chead{display:flex;justify-content:space-between;align-items:center;gap:8px;font-size:12.5px;color:var(--dim);font-weight:600}
+.edited{font-size:11px;background:var(--mark);color:var(--mark-ink);border-radius:999px;padding:1px 8px}
+.input{width:100%;border:1px solid var(--line);background:var(--ink);border-radius:10px;padding:10px 12px;resize:vertical;min-height:44px;font-size:15px;line-height:1.4}
+.input:focus{border-color:var(--mark);outline:none}
+.keep{display:flex;flex-wrap:wrap;gap:6px;align-items:center;font-size:12px;color:var(--dim)}
+.keep code{font-family:var(--f-mono);font-size:11.5px;background:rgba(124,200,255,.16);color:var(--sky);padding:2px 6px;border-radius:5px}
+.bad{font-size:12.5px;color:var(--bad)}
+.row{display:flex;flex-wrap:wrap;gap:8px;align-items:center}
+.btn{border:1px solid var(--line);background:none;color:var(--text);border-radius:999px;padding:7px 13px;cursor:pointer;font-weight:600;font-size:13px;display:inline-flex;align-items:center;gap:6px}
+.btn:hover{border-color:var(--dim)}
+.btn.go{background:var(--mark);border-color:var(--mark);color:var(--mark-ink)}
+.btn.go:hover{filter:brightness(1.05)}
+details.key{font-size:12px;color:var(--dim)}
+details.key summary{cursor:pointer;list-style:none;display:inline-flex;align-items:center;gap:4px}
+details.key summary::-webkit-details-marker{display:none}
+details.key summary::before{content:"▸";font-size:10px}
+details.key[open] summary::before{content:"▾"}
+details.key code{display:block;margin-top:6px;font-family:var(--f-mono);font-size:11.5px;color:var(--text);word-break:break-all;background:var(--ink);padding:8px;border-radius:8px}
+details.key p{margin:6px 0 0}
+.also{display:flex;flex-wrap:wrap;gap:6px}
+.also button{background:rgba(255,134,191,.14);color:var(--pink);border:0;border-radius:999px;padding:5px 11px;cursor:pointer;font-weight:600;font-size:12.5px}
+.also button:hover{background:rgba(255,134,191,.26)}
+.built{background:var(--ink);border-radius:12px;padding:12px;line-height:2.1;font-size:14px}
+.bit{border-radius:5px;padding:2px 6px}
+.bit.k{background:rgba(124,200,255,.2);color:var(--sky);cursor:pointer;box-shadow:inset 0 -2px 0 rgba(124,200,255,.5)}
+.bit.k.cur{background:var(--sky);color:var(--ink)}
+.bit.d{border:1px dashed var(--slate);color:var(--dim)}
+.label{font-size:12px;color:var(--dim);font-weight:600;margin-bottom:-6px}
+
+/* list + edits */
+.search{width:100%;border:1px solid var(--line);background:var(--ink);border-radius:999px;padding:9px 14px}
+.search:focus{border-color:var(--mark);outline:none}
+.grp h3{font-size:11.5px;letter-spacing:.08em;text-transform:uppercase;color:var(--dim);margin:10px 0 4px;font-weight:600}
+.it{display:flex;align-items:center;gap:10px;padding:8px 10px;border-radius:10px;cursor:pointer;background:none;border:0;text-align:left;width:100%;color:var(--text)}
+.it:hover{background:var(--panel)}
+.it .t{flex:1;min-width:0;display:flex;flex-direction:column}
+.it small{color:var(--dim);font-size:12px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.it .sw{flex:none;width:10px;height:10px;border-radius:3px}
+.chg{background:var(--panel);border-radius:12px;padding:12px;display:flex;flex-direction:column;gap:6px}
+.chg s{color:var(--dim)}
+.chg .new{color:var(--mark);font-weight:600}
+.none{display:flex;flex-direction:column;gap:8px;align-items:flex-start;color:var(--dim);padding:6px 2px}
+.none b{font-family:var(--f-display);font-size:20px;color:var(--text)}
+
+@media (max-width:900px){
+  .main{grid-template-columns:1fr}
+  .panel{position:static;height:auto;border-left:0;border-top:1px solid var(--line)}
+  .pbody{max-height:none}
+}
+@media (max-width:900px){.dock{left:50%}}
+@media (max-width:560px){.seg button{padding:6px 9px}}
+
+/* ================= Checkout replica (captured from a Shopify development store) ================= */
+.co{--link:#005bd1;--sel:#f4f6fe;--b:#dedede;--mute:#707070;--mute2:#666;
+  background:#fff;color:#000;border:1px solid var(--line);border-radius:10px;overflow:hidden;
+  font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;font-size:14px;line-height:1.35}
+.topbar{border-bottom:1px solid var(--b)}
+.topbar .in-w{display:flex;justify-content:space-between;align-items:center;padding:16px 38px;max-width:1000px;margin:0 auto}
+.bag{width:18px;height:18px;border:1.8px solid var(--link);border-radius:3px 3px 5px 5px;position:relative;margin-top:4px}
+.bag::before{content:"";position:absolute;left:3px;right:3px;top:-6px;height:6px;border:1.8px solid var(--link);border-bottom:0;border-radius:5px 5px 0 0}
+.cols{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);min-height:760px}
+.co-l{padding:38px 38px 24px;display:flex;justify-content:flex-end}
+.co-r{background:#f5f5f5;border-left:1px solid var(--b);padding:38px}
+.col{width:100%;max-width:500px;display:flex;flex-direction:column}
+.col-r{width:100%;max-width:400px;display:flex;flex-direction:column}
+.shop{font-size:20px;font-weight:600;line-height:24px;margin:0}
+.co-l .shop{margin-bottom:14px}
+.crumbs{display:flex;align-items:center;gap:8px;font-size:12px;margin-bottom:24px;flex-wrap:wrap}
+.crumbs .done{color:var(--link)} .crumbs .cur{color:#000;font-weight:600} .crumbs .todo{color:var(--mute)}
+.chev{width:6px;height:6px;border-right:1.3px solid var(--mute);border-top:1.3px solid var(--mute);transform:rotate(45deg)}
+.co h2{font-size:20px;font-weight:600;line-height:24px;margin:0}
+.co h3{font-size:16px;font-weight:600;line-height:20px;margin:0}
+.sect{display:flex;flex-direction:column;gap:14px;margin-bottom:30px}
+.sect-sub{display:flex;flex-direction:column;gap:4px}
+.hrow{display:flex;justify-content:space-between;align-items:baseline;gap:12px}
+.lnk{color:var(--link);text-decoration:underline;text-underline-offset:2px}
+.grid2{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+.grid3{display:grid;grid-template-columns:1fr 1fr 1fr;gap:12px}
+.in{border:1px solid var(--b);border-radius:12px;background:#fff;min-height:49px;padding:0 11px;display:flex;align-items:center;gap:8px;position:relative}
+.in .ph{color:var(--mute);flex:1;min-width:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.in.fl .fw{flex:1;min-width:0;display:flex;flex-direction:column;padding-top:3px}
+.in.fl .fl-l{font-size:12px;color:var(--mute);line-height:16px;align-self:flex-start}
+.in.fl .fl-v{color:#000;line-height:18px}
+.ico{width:16px;height:16px;flex:none;color:var(--mute)}
+.qi{width:16px;height:16px;border-radius:50%;border:1.3px solid #555;display:inline-flex;align-items:center;justify-content:center;font-size:10px;font-weight:600;color:#555;flex:none;font-style:normal;line-height:1}
+.q{display:inline-flex;align-items:center;gap:6px}
+.q .qi{width:13px;height:13px;font-size:9px;border-width:1.2px}
+.caret{width:7px;height:7px;border-right:1.5px solid #333;border-bottom:1.5px solid #333;transform:translateY(-2px) rotate(45deg);flex:none;margin-right:4px}
+.cb{display:flex;gap:10px;align-items:center}
+.cb i{width:18px;height:18px;border:1px solid #c7c7c7;border-radius:5px;flex:none;background:#fff;position:relative}
+.cb i.on{background:var(--link);border-color:var(--link)}
+.cb i.on::after{content:"";position:absolute;left:5px;top:2px;width:5px;height:9px;border:solid #fff;border-width:0 2px 2px 0;transform:rotate(45deg)}
+.btnrow{display:flex;justify-content:space-between;align-items:center;gap:16px;margin-top:4px}
+.btnrow .pbtn{margin-left:auto}
+.pbtn{background:var(--link);color:#fff;font-weight:600;border-radius:12px;padding:21px;line-height:18px;text-align:center}
+.pbtn.full{width:100%;font-size:16px;padding:17px}
+.back{color:var(--link);display:inline-flex;align-items:center;gap:10px}
+.back::before{content:"";width:7px;height:7px;border-left:1.5px solid var(--link);border-bottom:1.5px solid var(--link);transform:rotate(45deg)}
+.foot{margin-top:auto;padding-top:56px;font-size:12px}
+.review{display:flex;flex-direction:column;margin-bottom:30px}
+.review .rv{display:grid;grid-template-columns:96px minmax(0,1fr) auto;gap:12px;padding:14px 12px;border-bottom:1px solid var(--b);align-items:start}
+.review .rv:first-child{padding-top:4px}
+.rv .k{color:var(--mute)}
+.rv .v b{font-weight:600}
+.opt{border:1px solid var(--link);background:var(--sel);border-radius:12px;padding:0 12px;min-height:41px;display:flex;justify-content:space-between;align-items:center;font-weight:600}
+.subhead{font-weight:600;margin:0 0 -4px}
+.recbox{background:#f5f5f5;border-radius:12px;padding:14px 12px}
+.acc{border:1px solid var(--b);border-radius:12px;overflow:hidden;background:#fff}
+.acc-h{display:flex;justify-content:space-between;align-items:center;padding:0 12px;min-height:43px;font-weight:600;background:var(--sel);border:1px solid var(--link);margin:-1px;border-radius:12px 12px 0 0}
+.acc-b{background:#f5f5f5;padding:14px 12px 12px;display:flex;flex-direction:column;gap:12px;border-top:1px solid var(--b)}
+.testing{display:flex;flex-direction:column;gap:3px;line-height:1.4}
+.testing ul{margin:0;padding-left:18px}
+.testing .gs{color:var(--mute);text-decoration:underline;margin-top:6px}
+.pay-l{display:flex;align-items:center;gap:12px;min-width:0}
+.acc-h{min-height:52px!important}
+.brands{display:flex;gap:4px;align-items:center}
+.brands i{width:38px;height:24px;border-radius:4px;background:#fff;border:1px solid #d9d9d9;position:relative}
+.brands i::after{content:"";position:absolute;inset:8px 6px;border-radius:2px;background:#c9ced6}
+.brands em{font-style:normal;font-size:12px;color:var(--link);border:1px solid #d9d9d9;border-radius:4px;height:24px;min-width:28px;display:flex;align-items:center;justify-content:center;background:#fff}
+.pm-row{display:flex;justify-content:space-between;align-items:center;gap:12px;padding:0 12px;min-height:52px;border-top:1px solid var(--b);font-weight:500}
+.pm-sub{color:var(--mute);font-weight:400}
+.plogo{width:56px;height:22px;border-radius:4px;background:#eceef1;flex:none}
+.cardtag{width:32px;height:20px;border:1px solid #c9c9c9;border-radius:3px;background:linear-gradient(#fff 0 40%,#bbb 40% 55%,#fff 55%);flex:none}
+.radios{border:1px solid var(--b);border-radius:12px;overflow:hidden}
+.radios > div{display:flex;align-items:center;gap:10px;padding:0 12px;min-height:41px;font-weight:600}
+.radios > div + div{border-top:1px solid var(--b)}
+.radios > div.on{background:var(--sel);border:1px solid var(--link);margin:-1px;border-radius:12px 12px 0 0}
+.rd{width:18px;height:18px;border-radius:50%;border:1px solid #c7c7c7;background:#fff;flex:none}
+.rd.on{border:5px solid var(--link);box-shadow:inset 0 0 0 2px #fff}
+.disclosure{margin:0 0 20px;line-height:1.4}
+.disclosure .plink{text-decoration:underline}
+.li{display:flex;align-items:center;gap:14px;margin-bottom:14px}
+.th{width:54px;height:54px;border-radius:12px;border:1px solid rgba(0,0,0,.1);background:#fff;position:relative;flex:none;display:flex;align-items:center;justify-content:center}
+.th .img{width:44px;height:44px;border-radius:6px;background:linear-gradient(180deg,#2b2b2b 0 55%,#c8a24a 55% 62%,#1f1f1f 62%)}
+.th b{position:absolute;top:-8px;right:-8px;background:#000;color:#fff;border-radius:999px;font-size:12px;font-weight:600;min-width:20px;height:20px;display:flex;align-items:center;justify-content:center;padding:0 6px}
+.li .nm{flex:1;min-width:0}
+.plan{display:block;color:var(--mute2);font-size:12px;margin-top:2px}
+.dsc{display:flex;gap:10px;margin:4px 0 16px}
+.dsc .in{flex:1}
+.dsc .in.err{border:2px solid #dd1d1d}
+.apply{border:1px solid var(--b);background:#f0f0f0;color:#707070;border-radius:12px;padding:0 12px;font-weight:600;display:flex;align-items:center;min-height:49px}
+.apply.on{background:var(--link);color:#fff;border-color:var(--link)}
+.errmsg{color:#dd1d1d;margin:-10px 0 14px}
+.sum{display:flex;flex-direction:column;gap:8px}
+.sum .r{display:flex;justify-content:space-between;gap:12px}
+.tot{display:flex;justify-content:space-between;align-items:baseline;margin-top:10px}
+.tot .t{font-size:18px;font-weight:600}
+.tot .cur{font-size:12px;color:var(--mute2);margin-right:6px}
+.rec-row{display:flex;justify-content:space-between;gap:12px;border-top:1px solid var(--b);margin-top:10px;padding-top:8px;font-weight:600}
+.ty-head{display:flex;align-items:center;gap:12px;margin:0 0 24px}
+.ty-conf{color:var(--mute)}
+.ty-title{font-size:20px;font-weight:600;line-height:24px}
+.box{border:1px solid var(--b);border-radius:12px;overflow:hidden;margin-bottom:14px;background:#fff}
+.box-p{padding:16px 14px;display:flex;flex-direction:column;gap:8px}
+.box-f{background:#f5f5f5;border-top:1px solid var(--b);padding:12px 14px}
+.bh{font-size:16px;font-weight:600}
+.od{display:grid;grid-template-columns:1fr 1fr;gap:16px}
+.od-c{display:flex;flex-direction:column;gap:14px}
+.od-c > div{display:flex;flex-direction:column;gap:6px}
+.od-c b{font-weight:600}
+.pm{display:inline-flex;align-items:center;gap:8px}
+.co .plink{color:inherit}
+.need .plink{color:var(--link);text-decoration:underline}
+
+
+@media (max-width:1180px){.cols{grid-template-columns:1fr}.co-r{border-left:0;border-bottom:1px solid #dedede;order:-1;padding:24px}.co-l{justify-content:center}.col-r,.col{max-width:560px;margin:0 auto}.topbar .in-w{padding:14px 24px}}
+@media (max-width:520px){.co-l,.co-r{padding:20px 16px}.grid3{grid-template-columns:1fr}.review .rv{grid-template-columns:1fr auto}.review .rv .k{grid-column:1/-1}.od{grid-template-columns:1fr}}
+
+</style>
+</head>
+<body>
+<div class="app">
+
+  <div class="main">
+    <section class="canvas" aria-label="Checkout preview">
+<div class="co" id="co">
+        <div class="topbar" data-lay="one"><div class="in-w"><p class="shop" data-f="store_name"></p><span class="bag" aria-hidden="true"></span></div></div>
+        <div class="cols">
+        <div class="co-l"><div class="col">
+          <div data-lay="three">
+            <p class="shop" data-f="store_name"></p>
+            <nav class="crumbs" data-pages="information shipping payment">
+              <span class="done" data-f="crumb_cart"></span><i class="chev"></i>
+              <span data-f="crumb_information" class="c-information"></span><i class="chev"></i>
+              <span data-f="crumb_shipping" class="c-shipping"></span><i class="chev"></i>
+              <span data-f="crumb_payment" class="c-payment"></span>
+            </nav>
+          </div>
+
+          <div data-pages="checkout information">
+            <div class="sect">
+              <div class="hrow"><h2 data-f="contact_title"></h2><span class="lnk" data-f="sign_in"></span></div>
+              <div class="in fl"><span class="fw"><span class="fl-l" data-cart="std" data-f="email_or_phone_label"></span><span class="fl-l" data-cart="sub" data-f="email_label"></span><span class="fl-v">checkout-test@example.com</span></span><i class="qi" data-f="contact_tooltip">?</i></div>
+              <div class="cb"><i></i><span data-f="marketing_optin"></span></div>
+            </div>
+            <div class="sect">
+              <h2 data-lay="one" data-f="delivery_title"></h2>
+              <h2 data-lay="three" data-f="shipping_address_title"></h2>
+              <div class="in fl"><span class="fw"><span class="fl-l" data-f="country"></span><span class="fl-v">India</span></span><i class="caret"></i></div>
+              <div class="grid2">
+                <div class="in fl"><span class="fw"><span class="fl-l" data-f="first_name"></span><span class="fl-v">Test</span></span></div>
+                <div class="in fl"><span class="fw"><span class="fl-l" data-f="last_name"></span><span class="fl-v">Customer</span></span></div>
+              </div>
+              <div class="in fl"><span class="fw"><span class="fl-l" data-f="address1"></span><span class="fl-v">12 Test Road</span></span>
+                <svg class="ico" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5"><circle cx="7" cy="7" r="4.5"/><path d="m10.5 10.5 3 3"/></svg></div>
+              <div class="in"><span class="ph" data-f="address2"></span></div>
+              <div class="grid3">
+                <div class="in fl"><span class="fw"><span class="fl-l" data-f="city"></span><span class="fl-v">Mumbai</span></span></div>
+                <div class="in fl"><span class="fw"><span class="fl-l" data-f="state"></span><span class="fl-v">Maharashtra</span></span><i class="caret"></i></div>
+                <div class="in fl"><span class="fw"><span class="fl-l" data-f="pincode"></span><span class="fl-v">400001</span></span></div>
+              </div>
+              <div class="cb"><i></i><span data-f="save_info"></span></div>
+            </div>
+            <div class="btnrow" data-lay="three" style="margin-bottom:10px"><span class="back" data-f="back_to_cart"></span><span class="pbtn" data-f="continue_to_shipping"></span></div>
+          </div>
+
+          <div class="review" data-lay="three" data-pages="shipping payment">
+            <div class="rv"><span class="k" data-f="review_contact"></span><span class="v"><b>checkout-test@example.com</b></span><span class="lnk" data-f="review_change"></span></div>
+            <div class="rv"><span class="k" data-f="review_ship_to"></span><span class="v"><b>Test Customer</b><br>12 Test Road, 400001 Mumbai MH, India</span><span class="lnk" data-f="review_change"></span></div>
+            <div class="rv" data-pages="payment"><span class="k" data-f="review_shipping"></span><span class="v"><b><span data-f="rate_name"></span> · ₹18.00</b></span><span></span></div>
+          </div>
+
+          <div data-pages="checkout shipping">
+            <div class="sect">
+              <h2 data-lay="three" data-f="shipping_method_title"></h2>
+              <h3 data-lay="one" data-f="shipping_method_title"></h3>
+              <p class="subhead" data-cart="sub"><span data-f="first_shipment"></span></p>
+              <div class="opt"><span data-f="rate_name"></span><span>₹18.00</span></div>
+              <p class="subhead" data-cart="sub" style="margin-top:6px"><span data-f="recurring_shipments"></span></p>
+              <div class="recbox" data-cart="sub"><span data-f="rate_name"></span> · ₹18.00 <span data-f="delivery_frequency"></span></div>
+            </div>
+            <div class="btnrow" data-lay="three" style="margin-bottom:10px"><span class="back" data-f="back_to_information"></span><span class="pbtn" data-f="continue_to_payment"></span></div>
+          </div>
+
+          <div data-pages="checkout payment">
+            <div class="sect">
+              <div class="sect-sub"><h2 data-f="payment_title"></h2><span style="color:#707070" data-f="payment_secure"></span></div>
+              <div class="acc">
+                <div class="acc-h"><span class="pay-l"><span class="rd on"></span><span data-f="credit_card"></span></span><span class="brands" data-f="card_brands"><i></i><i></i><i></i><em>+5</em></span></div>
+                <div class="acc-b">
+                  <div class="in"><span class="ph" data-f="card_number"></span>
+                    <svg class="ico" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.4"><rect x="3" y="7" width="10" height="7" rx="1.5"/><path d="M5.5 7V5a2.5 2.5 0 0 1 5 0v2"/></svg></div>
+                  <div class="grid2">
+                    <div class="in"><span class="ph" data-f="card_expiry"></span></div>
+                    <div class="in"><span class="ph" data-f="card_cvv"></span><i class="qi" style="border-color:#707070;color:#707070">?</i></div>
+                  </div>
+                  <div class="in"><span class="ph" data-f="card_name"></span></div>
+                  <div class="cb" data-lay="one"><i class="on"></i><span data-f="same_billing_checkbox"></span></div>
+                </div>
+                <div class="pm-row"><span class="pay-l"><span class="rd"></span><span><span data-f="wallet_name">Shop Pay</span> <span class="pm-sub">· <span data-f="wallet_sub">Pay in full or in installments</span></span></span></span><span class="plogo"></span></div>
+                <div class="pm-row"><span class="pay-l"><span class="rd"></span><span data-f="paypal_label"></span></span><span class="plogo"></span></div>
+                <div class="pm-row"><span class="pay-l"><span class="rd"></span><span data-f="bnpl_name">Affirm - Pay Over Time</span></span><span class="plogo"></span></div>
+              </div>
+            </div>
+            <div class="sect" data-lay="three">
+              <div class="sect-sub"><h3 data-f="billing_title"></h3><span style="color:#707070" data-f="billing_description"></span></div>
+              <div class="radios">
+                <div class="on"><span class="rd on"></span><span data-f="billing_same"></span></div>
+                <div><span class="rd"></span><span data-f="billing_different"></span></div>
+              </div>
+            </div>
+            <p class="disclosure" data-cart="sub" data-f="sub_disclosure"></p>
+            <div data-lay="one"><div class="pbtn full" data-f="pay_now"></div></div>
+            <div class="btnrow" data-lay="three"><span class="back" data-f="back_to_shipping"></span><span class="pbtn" data-f="pay_now" style="padding-inline:18px"></span></div>
+          </div>
+
+          <div data-pages="thankyou">
+            <div class="ty-head">
+              <svg width="44" height="44" viewBox="0 0 44 44" fill="none" stroke="#005bd1" stroke-width="1.6" style="flex:none"><circle cx="22" cy="22" r="21"/><path d="m15 22.5 5 5 9-10" stroke-linecap="round" stroke-linejoin="round"/></svg>
+              <div><div class="ty-conf" data-f="confirmation_number"></div><div class="ty-title" data-f="thank_you_title"></div></div>
+            </div>
+            <div class="box">
+              <div class="box-p"><div class="bh" data-f="order_confirmed"></div><div data-f="confirmation_email_soon"></div></div>
+              <div class="box-f cb"><i></i><span data-f="marketing_optin"></span></div>
+            </div>
+            <div class="box"><div class="box-p" style="gap:14px">
+              <div class="bh" data-f="order_details"></div>
+              <div class="od">
+                <div class="od-c">
+                  <div><b data-f="ty_contact"></b><span>checkout-test@example.com</span></div>
+                  <div><b data-f="ty_shipping_address"></b><span>Test Customer<br>12 Test Road<br>400001 Mumbai MH<br>India</span></div>
+                  <div><b data-f="ty_shipping_method"></b><span data-f="rate_name"></span></div>
+                </div>
+                <div class="od-c">
+                  <div><b data-f="ty_payment_method"></b><span class="pm"><span class="cardtag" aria-hidden="true"></span><span data-f="ty_card_line"></span></span></div>
+                  <div><b data-f="ty_billing_address"></b><span>Test Customer<br>12 Test Road<br>400001 Mumbai MH<br>India</span></div>
+                </div>
+              </div>
+            </div></div>
+            <div class="btnrow"><span class="need" data-f="need_help"></span><span class="pbtn" data-f="continue_shopping"></span></div>
+          </div>
+
+          <div class="foot"><span class="lnk" data-f="policy_link"></span></div>
+        </div></div>
+
+        <aside class="co-r"><div class="col-r">
+          <div class="li"><div class="th"><span class="img"></span><b>1</b></div><span class="nm"><span data-f="product_title"></span></span><span>₹69.99</span></div>
+          <div class="li" data-cart="sub"><div class="th"><span class="img"></span><b>1</b></div><span class="nm"><span data-f="product_title"></span><span class="plan" data-f="plan_name"></span></span><span>₹62.99</span></div>
+          <div data-pages="checkout information shipping payment">
+            <div class="dsc"><div class="in" id="dscin"><span class="ph" data-f="discount_placeholder"></span></div><span class="apply" id="applybtn" data-f="apply"></span></div>
+            <div class="errmsg" id="dscerr" hidden><span data-f="discount_invalid"></span></div>
+          </div>
+          <div class="sum">
+            <div class="r"><span><span data-cart="std" data-f="subtotal_one"></span><span data-cart="sub" data-f="subtotal_many"></span></span><span id="v-sub"></span></div>
+            <div class="r"><span data-f="summary_shipping"></span><span>₹18.00</span></div>
+            <div class="r"><span class="q"><span data-f="estimated_taxes"></span><i class="qi" data-f="taxes_tooltip">?</i></span><span id="v-tax"></span></div>
+          </div>
+          <div class="tot"><span class="t" data-f="total"></span><span><span class="cur" data-f="currency_code"></span><span class="t" id="v-tot"></span></span></div>
+          <div class="rec-row" data-cart="sub"><span class="q"><span data-f="recurring_subtotal"></span><i class="qi" data-f="recurring_tooltip">?</i></span><span data-f="recurring_value"></span></div>
+        </div></aside>
+        </div>
+      </div>
+
+    </section>
+
+    <aside class="panel" aria-label="Text details">
+      <div class="tabs" role="tablist">
+        <button role="tab" id="tab-insp" aria-selected="true">Text</button>
+        <button role="tab" id="tab-all" aria-selected="false">All</button>
+        <button role="tab" id="tab-chg" aria-selected="false">Edits <span class="n" id="chg-n" data-zero>0</span></button>
+      </div>
+      <div class="pbody" id="pbody"></div>
+      <div class="foot"><i></i>Real Shopify checkout · fields matched by text</div>
+    </aside>
+  </div>
+  <nav class="dock" aria-label="View">
+    <div class="dk">
+      <button class="dk-btn" id="dk-layout" aria-expanded="false" aria-controls="pop-layout"><svg width="22" height="22" viewBox="0 0 22 22" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linejoin="round"><rect x="3.5" y="3.5" width="15" height="15" rx="3"/><path d="M3.5 8.5h15M9.5 8.5v10"/></svg><span class="dk-l">Layout</span><span class="dk-v" id="dkv-layout"></span></button>
+      <div class="pop" id="pop-layout" hidden>
+        <div class="pop-h">Layout</div>
+    <div class="seg vert" role="group" aria-label="Checkout layout">
+      <button id="lay-one" aria-pressed="true">
+        <svg width="14" height="14" viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.5"><rect x="2.5" y="1.5" width="9" height="11" rx="1.5"/></svg>One page</button>
+      <button id="lay-three" aria-pressed="false">
+        <svg width="14" height="14" viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.5"><rect x="4.5" y="3.5" width="8" height="9" rx="1.5"/><path d="M2 10V2.5A1 1 0 0 1 3 1.5h6"/></svg>3 pages</button>
+    </div>
+      </div>
+    </div>
+    <div class="dk">
+      <button class="dk-btn" id="dk-cart" aria-expanded="false" aria-controls="pop-cart"><svg width="22" height="22" viewBox="0 0 22 22" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linejoin="round"><path d="M4 7.5h14l-1.2 11H5.2Z"/><path d="M8 7.5V6a3 3 0 0 1 6 0v1.5"/></svg><span class="dk-l">Cart</span><span class="dk-v" id="dkv-cart"></span></button>
+      <div class="pop" id="pop-cart" hidden>
+        <div class="pop-h">Cart</div>
+    <div class="seg vert" role="group" aria-label="Cart">
+      <button id="cart-std" aria-pressed="true">
+        <svg width="14" height="14" viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M2.5 4.5h9l-.8 7.5H3.3Z"/><path d="M5 4.5V3.5a2 2 0 0 1 4 0v1"/></svg>Regular</button>
+      <button id="cart-sub" aria-pressed="false">
+        <svg width="14" height="14" viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M11.5 6A4.5 4.5 0 0 0 3.2 4M2.5 8a4.5 4.5 0 0 0 8.3 2"/><path d="M3 1.8v2.5h2.5M11 12.2V9.7H8.5"/></svg>Subscription</button>
+    </div>
+      </div>
+    </div>
+    <div class="dk">
+      <button class="dk-btn" id="dk-page" aria-expanded="false" aria-controls="pop-page"><svg width="22" height="22" viewBox="0 0 22 22" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linejoin="round"><path d="M6 2.8h7l4 4v12.4H6Z"/><path d="M13 2.8v4h4M9 11h5M9 14.5h5"/></svg><span class="dk-l">Page</span><span class="dk-v" id="dkv-page"></span></button>
+      <div class="pop" id="pop-page" hidden>
+        <div class="pop-h">Page</div>
+    <div class="seg vert" role="group" aria-label="Page">
+      <button id="pg-checkout" aria-pressed="true">Checkout</button>
+      <button id="pg-information" aria-pressed="false" hidden>Info</button>
+      <button id="pg-shipping" aria-pressed="false" hidden>Shipping</button>
+      <button id="pg-payment" aria-pressed="false" hidden>Payment</button>
+      <button id="pg-thankyou" aria-pressed="false">Thank you</button>
+    </div>
+      </div>
+    </div>
+    <div class="dk">
+      <button class="dk-btn" id="dk-view" aria-expanded="false" aria-controls="pop-view"><svg width="22" height="22" viewBox="0 0 22 22" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linejoin="round"><path d="M2.5 11S5.5 5 11 5s8.5 6 8.5 6-3 6-8.5 6-8.5-6-8.5-6Z"/><circle cx="11" cy="11" r="2.6"/></svg><span class="dk-l">View</span><span class="dk-v" id="dkv-view"></span></button>
+      <div class="pop pop-view" id="pop-view" hidden>
+        <div class="pop-h">View</div>
+        <label class="tgl"><input type="checkbox" id="showmap">Colour all text</label>
+        <label class="tgl"><input type="checkbox" id="showerr">Wrong-code error</label>
+        <div class="key">
+          <span class="lg"><i class="sw single"></i>Just this spot</span>
+          <span class="lg"><i class="sw shared"></i>Several spots</span>
+          <span class="lg"><i class="sw parts"></i>Made of pieces</span>
+          <span class="lg"><i class="sw fixed"></i>Edited elsewhere</span>
+        </div>
+      </div>
+    </div>
+  </nav>
+</div>
+
+<script>
+const P = "shopify.checkout.";
+const KEYS = {
+  "contact.contact_method_title":"Contact",
+  "customer_account.sign_in_link_label":"Sign in",
+  "contact.email_or_phone_label":"Email or mobile phone number",
+  "contact.email_label":"Email",
+  "contact.field_tooltip_helper_text":"Used for your order confirmation and cart reminders",
+  "marketing.accept_marketing_checkbox_label":"Email me with news and offers",
+  "shipping.delivery_title":"Delivery",
+  "delivery_options.shipping_address":"Shipping address",
+  "contact.country_label":"Country/Region",
+  "contact.optional_first_name_label":"First name (optional)",
+  "contact.first_name_label":"First name",
+  "contact.last_name_label":"Last name",
+  "contact.address1_label":"Address",
+  "contact.optional_address2_label":"Apartment, suite, etc. (optional)",
+  "contact.address2_label":"Apartment, suite, etc.",
+  "contact.city_label":"City",
+  "contact.state_label":"State",
+  "contact.pincode_label":"PIN code",
+  "customer_account.save_my_information_label":"Save this information for next time",
+  "shipping.shipping_method_title":"Shipping method",
+  "shipping.shipping_method_first_shipment_group_title.one":"First shipment",
+  "shipping.shipping_method_first_shipment_group_title.other":"First shipments",
+  "shipping.shipping_method_recurring_shipments_group_title.one":"Recurring shipment",
+  "shipping.shipping_method_recurring_shipments_group_title.other":"Recurring shipments",
+  "shipping.subscription_delivery_description.subscription_delivery_frequency.week.one":"every week",
+  "shipping.subscription_delivery_description.subscription_delivery_frequency.week.other":"every %{count} weeks",
+  "payment.title":"Payment",
+  "payment.card_security_notice":"All transactions are secure and encrypted.",
+  "payment_gateway.credit_card_label":"Credit card",
+  "payment.paypal_label":"PayPal",
+  "payment.card_number_label":"Card number",
+  "payment.card_expiry_label":"Expiration date (MM / YY)",
+  "payment.card_verification_value_label":"Security code",
+  "payment.name_on_card_label":"Name on card",
+  "payment.same_billing_address_checkbox_label":"Use shipping address as billing address",
+  "payment.billing_address_title":"Billing address",
+  "payment.billing_address_description":"Select the address that matches your card or payment method.",
+  "payment.same_billing_address_label":"Same as shipping address",
+  "payment.different_billing_address_label":"Use a different billing address",
+  "payment.purchase_options_subscription_agreement_label":"Your cart contains an automatically renewing subscription. By clicking \"%{button_label},\" %{consent_text} %{cancellation_instructions}",
+  "payment.purchase_options_subscription_consent_text":"you expressly and affirmatively agree that you will be automatically charged the recurring amount(s) shown in your cart (plus shipping and taxes) until the subscription(s) ends or you cancel.",
+  "payment.purchase_options_subscription_cancellation_instructions":"%{cancel_text} Please see the %{cancellation_policy_label}.",
+  "payment.purchase_options_subscription_cancel_text":"You may cancel anytime by going to your account or contacting the store.",
+  "payment.purchase_options_cancellation_policy_label":"cancellation policy",
+  "general.pay_now_button_label":"Pay now",
+  "shop_policies.subscription_policy":"Cancellations",
+  "general.all_rights_reserved":"All rights reserved %{shop_name}",
+  "order_summary.discount_placeholder":"Discount code",
+  "order_summary.apply_discount_button_label":"Apply",
+  "field_errors.reduction_code_discount_not_found":"Enter a valid discount code",
+  "order_summary.subtotal_label":"Subtotal",
+  "order_summary.subtotal_label_with_quantity.one":"Subtotal · %{count} item",
+  "order_summary.subtotal_label_with_quantity.other":"Subtotal · %{count} items",
+  "order_summary.shipping_label":"Shipping",
+  "order_summary.shipping_default_value":"Calculated at next step",
+  "order_summary.estimated_taxes_label":"Estimated taxes",
+  "order_summary.estimated_taxes_finalization_tooltip_content":"The final tax and total will be confirmed by email or text after you place your order.",
+  "order_summary.total_label":"Total",
+  "order_summary.recurring_subtotal_label":"Recurring subtotal",
+  "order_summary.recurring_total_tooltip":"Does not include shipping, tax, duties, or any applicable discounts",
+  "subscriptions.recurring_totals":"%{total_price} every %{interval}",
+  "subscriptions.recurring_total_intervals.week.one":"week",
+  "subscriptions.recurring_total_intervals.week.other":"%{count} weeks",
+  "general.cart":"Cart",
+  "contact.title":"Information",
+  "shipping.title":"Shipping",
+  "general.continue_to_shipping_method":"Continue to shipping",
+  "general.continue_to_payment_method":"Continue to payment",
+  "general.back_to_cart":"Return to cart",
+  "general.back_to_contact_information":"Return to information",
+  "general.back_to_shipping_method":"Return to shipping",
+  "review.blocks.contact_method_title":"Contact",
+  "shipping.shipping_address_title":"Ship to",
+  "review.blocks.change_link_label":"Change",
+  "order_summary.confirmation_number_label":"Confirmation #%{confirmation_number}",
+  "thank_you.page_title":"Thank you, %{display_name}!",
+  "thank_you.thank_you_title":"Your order is confirmed",
+  "thank_you.thank_you_confirmed_with_email_description.single_store":"You’ll receive a confirmation email soon",
+  "thank_you.customer_information_title":"Order details",
+  "thank_you.contact_information_title":"Contact information",
+  "thank_you.shipping_address_title":"Shipping address",
+  "thank_you.shipping_method_title":"Shipping method",
+  "thank_you.payment_method_title":"Payment method",
+  "thank_you.billing_address_title":"Billing address",
+  "thank_you.contact_us_html":"Need help? %{contact_us}",
+  "thank_you.contact_us":"Contact us",
+  "thank_you.return_to_store_link_label":"Continue shopping",
+};
+/* Other keys whose default text is identical, so an edit that doesn't show up can be retried on them */
+const SAME = {
+  "contact.contact_method_title":["review.blocks.contact_method_title"],
+  "contact.email_or_phone_label":["contact.email_or_phone_placeholder"],
+  "contact.email_label":["contact.email_placeholder"],
+  "contact.state_label":["contact.state_placeholder"],
+  "contact.pincode_label":["contact.pincode_placeholder"],
+  "contact.address1_label":["contact.address_title"],
+  "shipping.shipping_method_title":["review.blocks.shipping_method_title","thank_you.shipping_method_title"],
+  "payment.card_number_label":["payment.card_number_placeholder"],
+  "payment.card_expiry_label":["payment.card_expiry_placeholder"],
+  "payment.card_verification_value_label":["payment.card_verification_value_placeholder"],
+  "payment.name_on_card_label":["payment.name_on_card_placeholder"],
+  "payment.billing_address_title":["payment.fact_billing_address_label","payment_summary.billing_address_title","thank_you.billing_address_title"],
+  "payment.same_billing_address_label":["billing.same_as_shipping"],
+  "general.pay_now_button_label":["order_payment_collection.pay_now"],
+  "shop_policies.subscription_policy":["shop_policies.purchase_options_cancellation_policy"],
+  "order_summary.discount_placeholder":["order_summary.discount_label","order_summary.discount_code_aria_text"],
+  "order_summary.apply_discount_button_label":["payment.apply_gift_card_button_label"],
+  "order_summary.total_label":["order_summary.partial_total_label"],
+  "order_summary.shipping_label":["shipping.title","shop_policies.shipping_policy","wallets.shipping_line_label"],
+  "shipping.title":["order_summary.shipping_label","shop_policies.shipping_policy","wallets.shipping_line_label"],
+  "shipping.shipping_address_title":["review.blocks.shipping_address_title"],
+  "review.blocks.contact_method_title":["contact.contact_method_title"],
+  "review.blocks.change_link_label":["order_summary.product_change_label","payment.card_change_label","vaulted.change_button"],
+  "general.back_to_cart":["failed_payment.return_to_cart_button_label","too_many_requests.return_to_cart"],
+  "thank_you.thank_you_title":["thank_you.confirmed_title"],
+  "thank_you.thank_you_confirmed_with_email_description.single_store":["thank_you.thank_you_confirmed_with_email_and_phone_description.single_store"],
+  "delivery_options.shipping_address":["thank_you.shipping_address_title"],
+  "general.continue_to_payment_method":["processing.continue_to_payment_gateway_button_label"],
+  "customer_account.sign_in_link_label":["thank_you.login"],
+};
+
+
+/* Clickable spots. note/when are kept short on purpose. */
+const F = [
+  {id:"store_name", sec:"Header", label:"Store name", fixed:"Settings › General › Store name, or a logo in Checkout › Customize.", text:"Your Store"},
+  {id:"crumb_cart", sec:"Steps", label:"“Cart” step", key:"general.cart"},
+  {id:"crumb_information", sec:"Steps", label:"“Information” step", key:"contact.title"},
+  {id:"crumb_shipping", sec:"Steps", label:"“Shipping” step", key:"shipping.title"},
+  {id:"crumb_payment", sec:"Steps", label:"“Payment” step", key:"payment.title"},
+
+  {id:"contact_title", sec:"Contact", label:"Contact heading", key:"contact.contact_method_title"},
+  {id:"sign_in", sec:"Contact", label:"Sign in link", key:"customer_account.sign_in_link_label", note:"Only when customer accounts are on."},
+  {id:"email_or_phone_label", sec:"Contact", label:"Email or phone field", key:"contact.email_or_phone_label",
+    alt:[{key:"contact.email_label", when:"Subscription carts"}]},
+  {id:"email_label", sec:"Contact", label:"Email field", key:"contact.email_label",
+    alt:[{key:"contact.email_or_phone_label", when:"Regular carts"}]},
+  {id:"contact_tooltip", sec:"Contact", label:"Email help (? icon)", key:"contact.field_tooltip_helper_text"},
+  {id:"marketing_optin", sec:"Contact", label:"Email marketing checkbox", key:"marketing.accept_marketing_checkbox_label"},
+
+  {id:"delivery_title", sec:"Delivery", label:"Delivery heading", key:"shipping.delivery_title"},
+  {id:"shipping_address_title", sec:"Delivery", label:"Shipping address heading", key:"delivery_options.shipping_address"},
+  {id:"country", sec:"Delivery", label:"Country", key:"contact.country_label"},
+  {id:"first_name", sec:"Delivery", label:"First name", key:"contact.optional_first_name_label",
+    note:"“(optional)” is part of this text.",
+    alt:[{key:"contact.first_name_label", when:"First name required"}]},
+  {id:"last_name", sec:"Delivery", label:"Last name", key:"contact.last_name_label"},
+  {id:"address1", sec:"Delivery", label:"Address", key:"contact.address1_label"},
+  {id:"address2", sec:"Delivery", label:"Apartment", key:"contact.optional_address2_label",
+    alt:[{key:"contact.address2_label", when:"Apartment required"}]},
+  {id:"city", sec:"Delivery", label:"City", key:"contact.city_label"},
+  {id:"state", sec:"Delivery", label:"State", key:"contact.state_label", note:"Each country has its own (Province, County…)."},
+  {id:"pincode", sec:"Delivery", label:"PIN code", key:"contact.pincode_label", note:"Each country has its own (ZIP code, Postcode…)."},
+  {id:"save_info", sec:"Delivery", label:"Save info checkbox", key:"customer_account.save_my_information_label"},
+  {id:"back_to_cart", sec:"Buttons", label:"Return to cart", key:"general.back_to_cart"},
+  {id:"continue_to_shipping", sec:"Buttons", label:"Continue to shipping", key:"general.continue_to_shipping_method"},
+
+  {id:"review_contact", sec:"Summary box", label:"“Contact” row", key:"review.blocks.contact_method_title"},
+  {id:"review_ship_to", sec:"Summary box", label:"“Ship to” row", key:"shipping.shipping_address_title"},
+  {id:"review_shipping", sec:"Summary box", label:"“Shipping” row", key:"shipping.title", unsure:true},
+  {id:"review_change", sec:"Summary box", label:"Change link", key:"review.blocks.change_link_label"},
+
+  {id:"shipping_method_title", sec:"Shipping", label:"Shipping method heading", key:"shipping.shipping_method_title"},
+  {id:"first_shipment", sec:"Shipping", label:"First shipment", key:"shipping.shipping_method_first_shipment_group_title.one",
+    alt:[{key:"shipping.shipping_method_first_shipment_group_title.other", when:"More than one"}]},
+  {id:"recurring_shipments", sec:"Shipping", label:"Recurring shipments", key:"shipping.shipping_method_recurring_shipments_group_title.other",
+    alt:[{key:"shipping.shipping_method_recurring_shipments_group_title.one", when:"Just one"}]},
+  {id:"rate_name", sec:"Shipping", label:"Shipping rate name", fixed:"Settings › Shipping and delivery › rate name.", text:"Standard"},
+  {id:"delivery_frequency", sec:"Shipping", label:"How often it ships", key:"shipping.subscription_delivery_description.subscription_delivery_frequency.week.one",
+    note:"Rate and price come from shipping settings. Only this part is text.",
+    alt:[{key:"shipping.subscription_delivery_description.subscription_delivery_frequency.week.other", when:"Every 2+ weeks"}]},
+
+  {id:"payment_title", sec:"Payment", label:"Payment heading", key:"payment.title"},
+  {id:"payment_secure", sec:"Payment", label:"Security note", key:"payment.card_security_notice"},
+  {id:"credit_card", sec:"Payment", label:"Credit card option", key:"payment_gateway.credit_card_label"},
+  {id:"card_brands", sec:"Payment", label:"Card logos", fixed:"Your payment provider decides which card logos show.", text:""},
+  {id:"wallet_name", sec:"Payment", label:"Shop Pay", fixed:"Settings › Payments. Name comes from the provider.", text:"Shop Pay"},
+  {id:"wallet_sub", sec:"Payment", label:"Shop Pay subtitle", fixed:"Comes from Shop Pay. Not in the language editor.", text:"Pay in full or in installments"},
+  {id:"paypal_label", sec:"Payment", label:"PayPal option", key:"payment.paypal_label", unsure:true},
+  {id:"bnpl_name", sec:"Payment", label:"Pay-later option", fixed:"Settings › Payments. Name comes from the provider.", text:"Affirm - Pay Over Time"},
+  {id:"card_number", sec:"Payment", label:"Card number", key:"payment.card_number_label"},
+  {id:"card_expiry", sec:"Payment", label:"Expiry date", key:"payment.card_expiry_label"},
+  {id:"card_cvv", sec:"Payment", label:"Security code", key:"payment.card_verification_value_label"},
+  {id:"card_name", sec:"Payment", label:"Name on card", key:"payment.name_on_card_label"},
+  {id:"same_billing_checkbox", sec:"Payment", label:"Billing address checkbox", key:"payment.same_billing_address_checkbox_label"},
+  {id:"billing_title", sec:"Billing", label:"Billing address heading", key:"payment.billing_address_title"},
+  {id:"billing_description", sec:"Billing", label:"Billing help text", key:"payment.billing_address_description"},
+  {id:"billing_same", sec:"Billing", label:"Same address option", key:"payment.same_billing_address_label"},
+  {id:"billing_different", sec:"Billing", label:"Different address option", key:"payment.different_billing_address_label"},
+  {id:"sub_disclosure", sec:"Subscription", label:"Recurring charge notice", key:"payment.purchase_options_subscription_agreement_label",
+    vars:{button_label:{k:"general.pay_now_button_label"}, consent_text:{k:"payment.purchase_options_subscription_consent_text", b:true}, cancellation_instructions:{k:"payment.purchase_options_subscription_cancellation_instructions"}},
+    subvars:{"payment.purchase_options_subscription_cancellation_instructions":{cancel_text:{k:"payment.purchase_options_subscription_cancel_text", b:true}, cancellation_policy_label:{k:"payment.purchase_options_cancellation_policy_label", a:true}}},
+    note:"5 fields in one. Keep the legal meaning."},
+  {id:"pay_now", sec:"Payment", label:"Pay now button", key:"general.pay_now_button_label"},
+  {id:"back_to_information", sec:"Buttons", label:"Return to information", key:"general.back_to_contact_information"},
+  {id:"continue_to_payment", sec:"Buttons", label:"Continue to payment", key:"general.continue_to_payment_method"},
+  {id:"back_to_shipping", sec:"Buttons", label:"Return to shipping", key:"general.back_to_shipping_method"},
+  {id:"policy_link", sec:"Footer", label:"Policy link", key:"shop_policies.subscription_policy",
+    note:"One link per store policy.",
+    alt:[{key:"general.all_rights_reserved", when:"No policies set"}]},
+
+  {id:"product_title", sec:"Order summary", label:"Product name", fixed:"Products › product title.", text:"Bedside Table"},
+  {id:"plan_name", sec:"Order summary", label:"Subscription plan", fixed:"Your subscription app › plan name.", text:"Deliver every week, 10% off"},
+  {id:"discount_placeholder", sec:"Order summary", label:"Discount code box", key:"order_summary.discount_placeholder"},
+  {id:"apply", sec:"Order summary", label:"Apply button", key:"order_summary.apply_discount_button_label"},
+  {id:"discount_invalid", sec:"Order summary", label:"Wrong code message", key:"field_errors.reduction_code_discount_not_found"},
+  {id:"subtotal_one", sec:"Order summary", label:"Subtotal", key:"order_summary.subtotal_label",
+    alt:[{key:"order_summary.subtotal_label_with_quantity.other", when:"2+ items"}]},
+  {id:"subtotal_many", sec:"Order summary", label:"Subtotal with count", key:"order_summary.subtotal_label_with_quantity.other", vars:{count:{d:"2"}},
+    alt:[{key:"order_summary.subtotal_label", when:"1 item"}]},
+  {id:"summary_shipping", sec:"Order summary", label:"Shipping line", key:"order_summary.shipping_label",
+    alt:[{key:"order_summary.shipping_default_value", when:"Before address is entered"}]},
+  {id:"estimated_taxes", sec:"Order summary", label:"Estimated taxes", key:"order_summary.estimated_taxes_label"},
+  {id:"taxes_tooltip", sec:"Order summary", label:"Taxes help (? icon)", key:"order_summary.estimated_taxes_finalization_tooltip_content"},
+  {id:"total", sec:"Order summary", label:"Total", key:"order_summary.total_label"},
+  {id:"currency_code", sec:"Order summary", label:"Currency", fixed:"Your store or market currency.", text:"INR"},
+  {id:"recurring_subtotal", sec:"Subscription", label:"Recurring subtotal", key:"order_summary.recurring_subtotal_label"},
+  {id:"recurring_tooltip", sec:"Subscription", label:"Recurring help (? icon)", key:"order_summary.recurring_total_tooltip"},
+  {id:"recurring_value", sec:"Subscription", label:"Recurring price", key:"subscriptions.recurring_totals",
+    vars:{total_price:{d:"₹62.99"}, interval:{k:"subscriptions.recurring_total_intervals.week.one"}},
+    alt:[{key:"subscriptions.recurring_total_intervals.week.other", when:"Every 2+ weeks"}]},
+
+  {id:"confirmation_number", sec:"Thank you", label:"Confirmation number", key:"order_summary.confirmation_number_label", vars:{confirmation_number:{d:"A1B2C3D4E"}}},
+  {id:"thank_you_title", sec:"Thank you", label:"Thank you greeting", key:"thank_you.page_title", vars:{display_name:{d:"Test"}}},
+  {id:"order_confirmed", sec:"Thank you", label:"Order confirmed", key:"thank_you.thank_you_title"},
+  {id:"confirmation_email_soon", sec:"Thank you", label:"Email on the way", key:"thank_you.thank_you_confirmed_with_email_description.single_store"},
+  {id:"order_details", sec:"Thank you", label:"Order details heading", key:"thank_you.customer_information_title"},
+  {id:"ty_contact", sec:"Thank you", label:"Contact information", key:"thank_you.contact_information_title"},
+  {id:"ty_shipping_address", sec:"Thank you", label:"Shipping address", key:"thank_you.shipping_address_title"},
+  {id:"ty_shipping_method", sec:"Thank you", label:"Shipping method", key:"thank_you.shipping_method_title"},
+  {id:"ty_payment_method", sec:"Thank you", label:"Payment method", key:"thank_you.payment_method_title"},
+  {id:"ty_card_line", sec:"Thank you", label:"Card used", fixed:"Shows the shopper's card and amount.", text:"•••• 4242 · ₹100.59 INR"},
+  {id:"ty_billing_address", sec:"Thank you", label:"Billing address", key:"thank_you.billing_address_title"},
+  {id:"need_help", sec:"Thank you", label:"Need help line", key:"thank_you.contact_us_html", vars:{contact_us:{k:"thank_you.contact_us", a:true}}},
+  {id:"continue_shopping", sec:"Thank you", label:"Continue shopping", key:"thank_you.return_to_store_link_label"},
+];
+const byId = Object.fromEntries(F.map(f=>[f.id,f]));
+
+const vals = {};
+let layout="one", cart="std", page="checkout", selected=null, focusKey=null, tab="insp", query="", showErr=false;
+const esc = s => String(s).replace(/[&<>"]/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]));
+const val = k => vals[k] ?? KEYS[k];
+const phs = s => [...String(s).matchAll(/%\{(\w+)\}/g)].map(m=>m[1]);
+const varsFor = (f,key) => key===f.key ? (f.vars||{}) : ((f.subvars||{})[key]||{});
+
+function expand(f, key, html){
+  const vs=varsFor(f,key), raw=val(key); let out="", last=0;
+  for(const m of raw.matchAll(/%\{(\w+)\}/g)){
+    const lit=raw.slice(last,m.index); out+=html?esc(lit):lit; last=m.index+m[0].length;
+    const v=vs[m[1]];
+    if(!v){ out+=html?esc(m[0]):m[0]; continue; }
+    let t=v.k?expand(f,v.k,html):(html?esc(v.d):v.d);
+    if(html&&v.b) t="<strong>"+t+"</strong>";
+    if(html&&v.a) t='<span class="plink">'+t+"</span>";
+    out+=t;
+  }
+  const tail=raw.slice(last); return out+(html?esc(tail):tail);
+}
+function keysOf(f){ if(!f.key) return []; const out=[f.key]; const walk=k=>Object.values(varsFor(f,k)).forEach(v=>{ if(v.k){ out.push(v.k); walk(v.k); } }); walk(f.key); return out; }
+const usersOf = key => F.filter(g=>keysOf(g).includes(key)).map(g=>g.id);
+const textOf = f => f.fixed ? f.text : expand(f,f.key,false);
+function kindOf(f){ if(f.fixed) return "fixed"; if(Object.keys(f.vars||{}).length) return "parts"; if(usersOf(f.key).length>1) return "shared"; return "single"; }
+const KIND = {single:"Just this spot", shared:"Several spots", parts:"Made of pieces", fixed:"Edited elsewhere"};
+
+/* ---------- checkout ---------- */
+const isShown = el => (!el.dataset.lay||el.dataset.lay===layout) && (!el.dataset.cart||el.dataset.cart===cart) && (!el.dataset.pages||el.dataset.pages.split(" ").includes(page));
+function visible(el){ for(let n=el; n && n.id!=="co"; n=n.parentElement){ if(!isShown(n)) return false; } return true; }
+function paint(){
+  const co=document.getElementById("co");
+  co.querySelectorAll("[data-lay],[data-cart],[data-pages]").forEach(el=>{ el.hidden=!isShown(el); });
+  const sel=selected?byId[selected]:null, rel=new Set();
+  if(sel&&sel.key) keysOf(sel).forEach(k=>usersOf(k).forEach(id=>{ if(id!==sel.id) rel.add(id); }));
+  co.querySelectorAll("[data-f]").forEach(el=>{
+    const f=byId[el.dataset.f]; if(!f) return;
+    el.classList.add("k-"+kindOf(f));
+    if(f.fixed){ if(!el.children.length && !el.textContent) el.textContent=f.text; }
+    else if(el.classList.contains("qi")) el.title=textOf(f);
+    else el.innerHTML=expand(f,f.key,true);
+    el.classList.toggle("is-sel", selected===f.id);
+    el.classList.toggle("is-rel", rel.has(f.id));
+    el.classList.toggle("is-edited", keysOf(f).some(k=>k in vals));
+  });
+  const order=["information","shipping","payment"], i=order.indexOf(page);
+  order.forEach((p,j)=>{ const c=co.querySelector(".c-"+p); c.classList.remove("done","cur","todo"); c.classList.add(j<i?"done":j===i?"cur":"todo"); });
+  const N=cart==="std"?{sub:"₹69.99",tax:"₹12.60",tot:"₹100.59"}:{sub:"₹132.98",tax:"₹23.94",tot:"₹174.92"};
+  document.getElementById("v-sub").textContent=N.sub; document.getElementById("v-tax").textContent=N.tax; document.getElementById("v-tot").textContent=N.tot;
+  document.getElementById("dscin").classList.toggle("err",showErr);
+  document.getElementById("dscerr").hidden=!showErr;
+  document.getElementById("applybtn").classList.toggle("on",showErr);
+  const set=(id,on)=>document.getElementById(id).setAttribute("aria-pressed",on);
+  set("lay-one",layout==="one"); set("lay-three",layout==="three"); set("cart-std",cart==="std"); set("cart-sub",cart==="sub");
+  ["checkout","information","shipping","payment","thankyou"].forEach(p=>set("pg-"+p,page===p));
+  document.getElementById("pg-checkout").hidden=layout!=="one";
+  ["information","shipping","payment"].forEach(p=>document.getElementById("pg-"+p).hidden=layout!=="three");
+  const n=Object.keys(vals).length, nb=document.getElementById("chg-n");
+  nb.textContent=n; nb.toggleAttribute("data-zero", n===0);
+  if(typeof dockValues==="function") dockValues();
+}
+
+/* ---------- drawer ---------- */
+const pbody=document.getElementById("pbody");
+const ICON_COPY='<svg width="14" height="14" viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.6"><rect x="4.5" y="4.5" width="8" height="8" rx="1.5"/><path d="M9.5 4.5V2.5a1 1 0 0 0-1-1h-6a1 1 0 0 0-1 1v6a1 1 0 0 0 1 1h2"/></svg>';
+const WHERE='Online Store › Themes › ⋯ › <b>Edit default theme content</b>';
+function searchText(k){ const v=KEYS[k]; const p=v.split(/%\{\w+\}/).map(s=>s.trim()).filter(Boolean).sort((a,b)=>b.length-a.length); return p[0]||v; }
+
+function card(k,o={}){
+  const v=val(k), def=KEYS[k], need=phs(def), missing=need.filter(p=>!v.includes("%{"+p+"}")), same=SAME[k]||[];
+  const input = def.length>44 ? `<textarea class="input" id="in-${esc(k)}" rows="3" aria-label="Text">${esc(v)}</textarea>` : `<input class="input" id="in-${esc(k)}" value="${esc(v)}" aria-label="Text">`;
+  return `<div class="card ${o.cur?"cur":""} ${o.alt?"alt":""}">
+    <div class="chead"><span>${esc(o.head||"Text")}</span>${k in vals?'<span class="edited">Edited</span>':""}</div>
+    ${input}
+    ${need.length?`<div class="keep">Keep ${need.map(p=>`<code>%{${esc(p)}}</code>`).join("")}</div>`:""}
+    ${missing.length?`<div class="bad">Put back ${missing.map(p=>"%{"+esc(p)+"}").join(" ")}</div>`:""}
+    <div class="row">
+      <button class="btn go" data-copy="${esc(searchText(k))}">${ICON_COPY}Copy to search</button>
+      ${k in vals?`<button class="btn" data-reset="${esc(k)}">Undo</button>`:""}
+    </div>
+    <details class="key"><summary>Field key</summary><code>${esc(P+k)}</code>${same.length?`<p>Same text also in ${same.length} other field${same.length>1?"s":""}.</p>`:""}</details>
+  </div>`;
+}
+
+function renderInspector(){
+  if(!selected){
+    pbody.innerHTML=`<div class="hello">
+      <h2>Tap any <em>text</em> on the checkout</h2>
+      <ol class="howto">
+        <li><span class="num">1</span><span>Tap text</span></li>
+        <li><span class="num">2</span><span>Type your version, then <b>Copy to search</b></span></li>
+        <li><span class="num">3</span><span class="path">Paste it in ${WHERE}</span></li>
+      </ol>
+    </div>`; return;
+  }
+  const f=byId[selected], kind=kindOf(f);
+  let h=`<div><div class="sec">${esc(f.sec)}</div><h2 class="ttl">${esc(f.label)}</h2></div>
+    <div class="pills"><span class="pill ${kind}">${KIND[kind]}</span>${f.unsure?'<span class="pill guess">Best guess</span>':""}</div>`;
+  if(kind==="fixed"){ pbody.innerHTML=h+`<div class="where"><span>Change it in</span>${esc(f.fixed)}</div>`; return; }
+  if(kind==="parts"){
+    const raw=val(f.key); let s="", last=0;
+    for(const m of raw.matchAll(/%\{(\w+)\}/g)){
+      s+=esc(raw.slice(last,m.index)); last=m.index+m[0].length;
+      const v=(f.vars||{})[m[1]];
+      if(!v) s+=`<span class="bit d">${esc(m[0])}</span>`;
+      else if(v.d) s+=`<span class="bit d" title="Filled in automatically">${esc(v.d)}</span>`;
+      else s+=`<span class="bit k ${focusKey===v.k?"cur":""}" data-focus="${esc(v.k)}">${esc(expand(f,v.k,false))}</span>`;
+    }
+    s+=esc(raw.slice(last));
+    h+=`<div class="label">Blue = its own field · dashed = automatic</div><div class="built">${s}</div>`;
+  }
+  if(kind==="shared"){
+    const others=usersOf(f.key).filter(id=>id!==f.id);
+    h+=`<div class="label">Also changes</div><div class="also">${others.map(id=>`<button data-go="${id}">${esc(byId[id].label)}</button>`).join("")}</div>`;
+  }
+  if(f.note) h+=`<p class="tip">${esc(f.note)}</p>`;
+  h+=card(f.key,{cur:!focusKey||focusKey===f.key});
+  keysOf(f).slice(1).forEach(k=>{
+    const o=usersOf(k).filter(id=>id!==f.id);
+    h+=card(k,{cur:focusKey===k, head: o.length?`Piece · also in ${o.map(id=>byId[id].label).join(", ")}`:"Piece"});
+  });
+  (f.alt||[]).forEach(a=>h+=card(a.key,{alt:true, head:`Used instead: ${a.when}`}));
+  pbody.innerHTML=h;
+  if(focusKey){ const el=document.getElementById("in-"+focusKey); el&&el.scrollIntoView({block:"center"}); }
+}
+
+function renderAll(){
+  const q=query.trim().toLowerCase(), groups={};
+  F.forEach(f=>{ if(q && !(f.label+" "+textOf(f)+" "+(f.key||"")+" "+f.sec).toLowerCase().includes(q)) return; (groups[f.sec] ||= []).push(f); });
+  let h=`<input class="search" id="q" placeholder="Search…" value="${esc(query)}" aria-label="Search">`;
+  const secs=Object.keys(groups);
+  if(!secs.length) h+=`<div class="none"><span>No match for “${esc(query)}”</span></div>`;
+  secs.forEach(s=>{
+    h+=`<div class="grp"><h3>${esc(s)}</h3>`;
+    groups[s].forEach(f=>{ h+=`<button class="it" data-go="${f.id}"><i class="sw ${kindOf(f)}"></i><span class="t">${esc(f.label)}<small>${esc(textOf(f))}</small></span></button>`; });
+    h+=`</div>`;
+  });
+  pbody.innerHTML=h;
+  document.getElementById("q").addEventListener("input",e=>{ query=e.target.value; const pos=e.target.selectionStart; renderAll(); const n=document.getElementById("q"); n.focus(); n.setSelectionRange(pos,pos); });
+}
+
+function renderChanges(){
+  const ks=Object.keys(vals);
+  if(!ks.length){ pbody.innerHTML=`<div class="none"><b>No edits yet</b><span>Your edits collect here.</span></div>`; return; }
+  let h=`<div class="path">Make these in ${WHERE}</div>`;
+  ks.forEach(k=>{ const u=usersOf(k).concat(F.filter(f=>(f.alt||[]).some(a=>a.key===k)).map(f=>f.id));
+    h+=`<div class="chg"><s>${esc(KEYS[k])}</s><span class="new">${esc(vals[k])}</span>
+      <div class="row">${u[0]?`<button class="btn" data-go="${u[0]}">Show</button>`:""}<button class="btn" data-copy="${esc(searchText(k))}">${ICON_COPY}Copy old</button><button class="btn" data-reset="${esc(k)}">Undo</button></div></div>`; });
+  h+=`<div class="row"><button class="btn go" id="copy-all">${ICON_COPY}Copy list</button><button class="btn" id="reset-all">Undo all</button></div>`;
+  pbody.innerHTML=h;
+}
+function renderPanel(){
+  document.querySelectorAll(".tabs button").forEach(b=>b.setAttribute("aria-selected", b.id==="tab-"+tab));
+  (tab==="insp"?renderInspector:tab==="all"?renderAll:renderChanges)();
+}
+
+function select(id,key){
+  const f=byId[id]; if(!f) return;
+  const els=[...document.querySelectorAll(`#co [data-f="${id}"]`)];
+  if(!els.some(visible)){
+    const combos=[];
+    for(const L of [layout, layout==="one"?"three":"one"]) for(const C of [cart, cart==="std"?"sub":"std"])
+      for(const Pg of (L==="one"?["checkout","thankyou"]:["information","shipping","payment","thankyou"])) combos.push([L,C,Pg]);
+    const keep=[layout,cart,page]; let ok=false;
+    for(const [L,C,Pg] of combos){ layout=L; cart=C; page=Pg; if(els.some(visible)){ ok=true; break; } }
+    if(!ok) [layout,cart,page]=keep;
+  }
+  selected=id; focusKey=key||null; tab="insp"; paint(); renderPanel();
+  const el=els.find(visible); el&&el.scrollIntoView({block:"center",behavior:matchMedia("(prefers-reduced-motion:reduce)").matches?"auto":"smooth"});
+}
+async function copy(text,btn){
+  try{ await navigator.clipboard.writeText(text); btn.innerHTML="Copied ✓"; } catch{ btn.textContent="Couldn't copy"; }
+  setTimeout(renderPanel,1100);
+}
+function viewChanged(){ if(selected && ![...document.querySelectorAll(`#co [data-f="${selected}"]`)].some(visible)) selected=null; paint(); renderPanel(); }
+
+document.getElementById("co").addEventListener("click",e=>{ const el=e.target.closest("[data-f]"); if(el) select(el.dataset.f); });
+document.getElementById("lay-one").onclick=()=>{ layout="one"; if(page!=="thankyou") page="checkout"; viewChanged(); };
+document.getElementById("lay-three").onclick=()=>{ layout="three"; if(page!=="thankyou") page="information"; viewChanged(); };
+document.getElementById("cart-std").onclick=()=>{ cart="std"; viewChanged(); };
+document.getElementById("cart-sub").onclick=()=>{ cart="sub"; viewChanged(); };
+["checkout","information","shipping","payment","thankyou"].forEach(p=>document.getElementById("pg-"+p).onclick=()=>{ page=p; viewChanged(); });
+document.getElementById("showmap").onchange=e=>{ document.getElementById("co").classList.toggle("show-map",e.target.checked); dockValues(); };
+document.getElementById("showerr").onchange=e=>{ showErr=e.target.checked; paint(); };
+document.querySelector(".tabs").addEventListener("click",e=>{ const b=e.target.closest("button"); if(!b) return; tab=b.id.replace("tab-",""); renderPanel(); });
+pbody.addEventListener("input",e=>{
+  const t=e.target; if(!t.id?.startsWith("in-")) return;
+  const k=t.id.slice(3);
+  if(t.value===KEYS[k]) delete vals[k]; else vals[k]=t.value;
+  paint();
+  const c=t.closest(".card"), pill=c.querySelector(".edited");
+  if(k in vals && !pill) c.querySelector(".chead").insertAdjacentHTML("beforeend",'<span class="edited">Edited</span>');
+  if(!(k in vals) && pill) pill.remove();
+  const missing=phs(KEYS[k]).filter(p=>!t.value.includes("%{"+p+"}"));
+  let w=c.querySelector(".bad");
+  if(missing.length){ if(!w){ c.querySelector(".keep").insertAdjacentHTML("afterend",'<div class="bad"></div>'); w=c.querySelector(".bad"); } w.textContent="Put back "+missing.map(p=>"%{"+p+"}").join(" "); }
+  else if(w) w.remove();
+  document.querySelectorAll(`.bit[data-focus="${CSS.escape(k)}"]`).forEach(b=>b.textContent=expand(byId[selected],k,false));
+});
+pbody.addEventListener("click",e=>{
+  const b=e.target.closest("button, .bit.k"); if(!b) return;
+  if(b.dataset.focus){ focusKey=b.dataset.focus; renderInspector(); return; }
+  if(b.dataset.go){ select(b.dataset.go); return; }
+  if(b.dataset.reset){ delete vals[b.dataset.reset]; paint(); renderPanel(); return; }
+  if(b.dataset.copy){ copy(b.dataset.copy,b); return; }
+  if(b.id==="copy-all"){ copy(Object.keys(vals).map(k=>`"${KEYS[k]}" → "${vals[k]}"`).join("\n"),b); return; }
+  if(b.id==="reset-all"){ for(const k in vals) delete vals[k]; paint(); renderPanel(); }
+});
+
+/* dock popovers */
+const DK=["layout","cart","page","view"];
+function closePops(except){ DK.forEach(k=>{ if(k===except) return; document.getElementById("pop-"+k).hidden=true; document.getElementById("dk-"+k).setAttribute("aria-expanded","false"); }); }
+DK.forEach(k=>{
+  const btn=document.getElementById("dk-"+k), pop=document.getElementById("pop-"+k);
+  btn.addEventListener("click",e=>{ e.stopPropagation(); const open=pop.hidden; closePops(k); pop.hidden=!open; btn.setAttribute("aria-expanded",String(open)); if(open){ const f=pop.querySelector('button[aria-pressed="true"]')||pop.querySelector("button:not([hidden])"); f&&f.focus(); } });
+  pop.addEventListener("click",e=>{ e.stopPropagation(); if(e.target.closest("button")){ closePops(); btn.focus(); } });
+});
+document.addEventListener("click",()=>closePops());
+document.addEventListener("keydown",e=>{ if(e.key==="Escape") closePops(); });
+function dockValues(){
+  const pick=id=>{ const b=document.querySelector(`#pop-${id} button[aria-pressed="true"]`); return b?b.textContent.trim():""; };
+  ["layout","cart","page"].forEach(k=>document.getElementById("dkv-"+k).textContent=pick(k));
+  document.getElementById("dkv-view").textContent = document.getElementById("showmap").checked ? "Colours on" : "Colours off";
+}
+paint(); renderPanel();
+</script>
+</body>
+</html>
